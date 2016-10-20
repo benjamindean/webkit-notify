@@ -1,0 +1,125 @@
+#!/usr/bin/python
+
+import argparse
+
+import gi
+
+gi.require_version('WebKit', '3.0')
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, Gdk, WebKit, GObject
+
+
+class App(object):
+    def __init__(self):
+        self.args = self.parse_arguments()
+        self.window = Gtk.Window()
+        self.webView = WebKit.WebView()
+        self.timeout = None
+
+        self.configure()
+        Gtk.main()
+
+    def configure(self):
+        self.window.set_title(self.args.title)
+        self.window.set_decorated(False)
+        self.window.set_can_focus(False)
+        self.window.set_resizable(False)
+        self.window.set_skip_taskbar_hint(False)
+        self.window.set_accept_focus(False)
+        self.window.connect("enter-notify-event", self.timeout_remove)
+        self.window.connect("leave-notify-event", self.timeout_add)
+        self.set_position(self.args.margin, self.args.gravity)
+        self.load_html()
+
+        self.window.add(self.webView)
+        self.window.show_all()
+
+        if self.args.timeout is not 0:
+            self.timeout_add()
+
+    def load_html(self):
+        with open(self.args.file, 'r') as file:
+            content = ''.join([i.rstrip() for i in file.readlines()])
+            content = self.strtr(content, {
+                '{title}': self.args.title,
+                '{description}': self.args.description
+            })
+            self.webView.load_html_string(content, '')
+
+    def set_position(self, margin=20, gravity='TOP_RIGHT'):
+
+        screen = self.window.get_screen()
+        monitors = screen.get_n_monitors()
+
+        s_width = screen.width()
+        s_height = screen.height()
+
+        width, height = self.window.get_size()
+        self.window.set_gravity(Gdk.Gravity.CENTER)
+
+        gravity_dict = {
+            'TOP_RIGHT': (s_width - width - margin, margin),
+            'TOP_LEFT': (-(s_width / monitors) + width + margin, margin),
+            'BOTTOM_LEFT': (-(s_width / monitors) + width + margin, s_height - height - margin),
+            'BOTTOM_RIGHT': (s_width - width - margin, s_height - height - margin)
+        }
+
+        root_x, root_y = gravity_dict[gravity]
+        self.window.move(root_x, root_y)
+
+    def timeout_add(self, *args):
+        self.timeout = GObject.timeout_add(self.args.timeout, quit)
+
+    def timeout_remove(self, *args):
+        GObject.source_remove(self.timeout)
+
+    def parse_arguments(self):
+        parser = argparse.ArgumentParser(description='GTK WebKit-based notifications')
+        parser.add_argument('--title',
+                            default="Title",
+                            type=str,
+                            help='Title')
+        parser.add_argument('--description',
+                            default="Description",
+                            type=str,
+                            help='Description')
+        parser.add_argument('--timeout',
+                            default=2000,
+                            type=int,
+                            help='Timeout')
+        parser.add_argument('--file',
+                            default='notification.html',
+                            type=str,
+                            help='HTML file for notification')
+        parser.add_argument('--gravity',
+                            default='TOP_RIGHT',
+                            type=str,
+                            help='Gravity')
+        parser.add_argument('--margin',
+                            default=20,
+                            type=int,
+                            help='Window margin')
+
+        return parser.parse_args()
+
+    def strtr(self, string, replace):
+        buffer = []
+        i, n = 0, len(string)
+        while i < n:
+            match = False
+            for s, r in replace.items():
+                if string[i:len(s) + i] == s:
+                    buffer.append(r)
+                    i = i + len(s)
+                    match = True
+                    break
+            if not match:
+                buffer.append(string[i])
+                i = i + 1
+        return ''.join(buffer)
+
+    def quit(self):
+        Gtk.main_quit()
+
+
+app = App()
