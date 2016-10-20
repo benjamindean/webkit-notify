@@ -12,7 +12,14 @@ from gi.repository import Gtk, Gdk, WebKit, GObject
 class App(object):
     def __init__(self):
         self.args = self.parse_arguments()
-        self.window = Gtk.Window(type="popup")
+        self.window = Gtk.Window(
+            type='popup',
+            decorated=False,
+            title=self.args.title,
+            can_focus=False,
+            accept_focus=False,
+            type_hint=Gdk.WindowTypeHint.NOTIFICATION
+        )
         self.webView = WebKit.WebView()
         self.timeout = None
 
@@ -21,22 +28,15 @@ class App(object):
 
     def configure(self):
         self.load_html()
-        self.window.set_title(self.args.title)
-        self.window.set_decorated(False)
-        self.window.set_can_focus(False)
-        self.window.set_resizable(False)
-        self.window.set_skip_taskbar_hint(False)
-        self.window.set_accept_focus(False)
-        self.window.set_type_hint(Gdk.WindowTypeHint.NOTIFICATION)
+        self.window.add(self.webView)
         self.window.connect("enter-notify-event", self.timeout_remove)
         self.window.connect("leave-notify-event", self.timeout_add)
-        self.set_position(self.args.margin, self.args.gravity)
+        self.webView.connect("load-finished", self.show_window)
 
-        self.window.add(self.webView)
+    def show_window(self, *args):
+        if self.args.timeout is not 0: self.timeout_add()
         self.window.show_all()
-
-        if self.args.timeout is not 0:
-            self.timeout_add()
+        self.set_position(self.args.margin, self.args.gravity)
 
     def load_html(self):
         with open(self.args.file, 'r') as file:
@@ -47,9 +47,7 @@ class App(object):
             })
             self.webView.load_html_string(content, '')
 
-
     def set_position(self, margin=20, gravity='TOP_RIGHT'):
-
         screen = self.window.get_screen()
         monitors = screen.get_n_monitors()
 
