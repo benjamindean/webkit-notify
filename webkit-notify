@@ -12,7 +12,7 @@ from gi.repository import Gtk, Gdk, WebKit, GObject
 class App(object):
     def __init__(self):
         self.args = self.parse_arguments()
-        self.window = Gtk.Window()
+        self.window = Gtk.Window(type="popup")
         self.webView = WebKit.WebView()
         self.timeout = None
 
@@ -20,16 +20,17 @@ class App(object):
         Gtk.main()
 
     def configure(self):
+        self.load_html()
         self.window.set_title(self.args.title)
         self.window.set_decorated(False)
         self.window.set_can_focus(False)
         self.window.set_resizable(False)
         self.window.set_skip_taskbar_hint(False)
         self.window.set_accept_focus(False)
+        self.window.set_type_hint(Gdk.WindowTypeHint.NOTIFICATION)
         self.window.connect("enter-notify-event", self.timeout_remove)
         self.window.connect("leave-notify-event", self.timeout_add)
         self.set_position(self.args.margin, self.args.gravity)
-        self.load_html()
 
         self.window.add(self.webView)
         self.window.show_all()
@@ -45,6 +46,7 @@ class App(object):
                 '{description}': self.args.description
             })
             self.webView.load_html_string(content, '')
+
 
     def set_position(self, margin=20, gravity='TOP_RIGHT'):
 
